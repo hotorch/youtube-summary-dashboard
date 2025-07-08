@@ -1,0 +1,207 @@
+# Database Schema Design & Data Constraint Rules
+
+## CRITICAL: Data Size Research Framework
+
+### MUST DO - Before Setting Any Constraints
+1. **Research actual data sizes** from similar systems/APIs
+2. **Test with real data samples** - not just "reasonable" estimates
+3. **Plan for 10x growth** in data volume and complexity
+4. **Consider different data formats** and edge cases
+
+### FORBIDDEN - Constraint Setting Mistakes
+❌ **NEVER set arbitrary limits without research**
+❌ **NEVER assume "reasonable" sizes without validation**
+❌ **NEVER use small limits for text fields that come from external APIs**
+❌ **NEVER ignore data format variations and edge cases**
+
+## Data Source Analysis Checklist
+
+### When Designing Schema for External Data:
+- [ ] **What is the actual data source?** (API, user input, file upload, etc.)
+- [ ] **What are the documented limits?** (API documentation, service specs)
+- [ ] **What are the realistic sizes?** (test with real data)
+- [ ] **What are the edge cases?** (maximum possible values)
+- [ ] **How might the data evolve?** (format changes, size increases)
+
+### External API Data Considerations:
+- [ ] Check API documentation for field size limits
+- [ ] Test with actual API responses
+- [ ] Consider different content types (short vs. long content)
+- [ ] Account for different languages and character encodings
+- [ ] Plan for API response format changes
+
+## Common Data Size Estimation Errors
+
+### Text Field Size Mistakes:
+```sql
+-- ❌ WRONG: Arbitrary small limits
+summary TEXT CHECK (length(summary) <= 1000)  -- YouTube summaries can be much longer!
+
+-- ✅ CORRECT: Research-based limits
+summary TEXT CHECK (length(summary) <= 10000)  -- Based on actual AI summary lengths
+```
+
+### Numeric Field Range Mistakes:
+```sql
+-- ❌ WRONG: Assuming small numbers
+view_count INTEGER CHECK (view_count >= 0 AND view_count <= 999999)  -- YouTube videos can have billions of views!
+
+-- ✅ CORRECT: Research-based ranges
+view_count BIGINT CHECK (view_count >= 0)  -- No upper limit, uses appropriate data type
+```
+
+## Schema Design Research Process
+
+### Step 1: Data Source Investigation
+1. **Read API documentation** for field specifications
+2. **Make test API calls** to see actual response sizes
+3. **Collect samples** of different content types
+4. **Measure actual data sizes** in your target encoding
+
+### Step 2: Constraint Planning
+1. **Set minimum viable constraints** (allow for growth)
+2. **Use appropriate data types** (TEXT vs VARCHAR, INT vs BIGINT)
+3. **Plan for internationalization** (UTF-8 character considerations)
+4. **Consider compression** for large text fields
+
+### Step 3: Validation Testing
+1. **Test with maximum size data**
+2. **Test with different content types**
+3. **Test with edge case scenarios**
+4. **Validate constraint errors are handled gracefully**
+
+## Data Type Selection Guidelines
+
+### Text Fields:
+```sql
+-- For short, predictable text (titles, names)
+title VARCHAR(500)  -- Research-based limit
+
+-- For medium text with some variation
+description TEXT CHECK (length(description) <= 5000)
+
+-- For large, unpredictable text (AI-generated content)
+summary TEXT  -- No length constraint, or very large limit
+```
+
+### Numeric Fields:
+```sql
+-- For small numbers (ratings, counts under 1M)
+rating INTEGER CHECK (rating >= 1 AND rating <= 5)
+
+-- For large numbers (views, likes, potentially unlimited)
+view_count BIGINT CHECK (view_count >= 0)
+
+-- For precise decimals (prices, percentages)
+price DECIMAL(10,2)  -- Research appropriate precision
+```
+
+### Date/Time Fields:
+```sql
+-- Always use timezone-aware types
+created_at TIMESTAMPTZ DEFAULT NOW()
+updated_at TIMESTAMPTZ DEFAULT NOW()
+```
+
+## External Service Integration Schema Rules
+
+### When Storing Data from External APIs:
+1. **Mirror the source constraints** - don't be more restrictive
+2. **Add buffer space** for future API changes
+3. **Use nullable fields** for optional API data
+4. **Plan for API versioning** changes
+
+### Example: YouTube API Integration
+```sql
+-- ❌ WRONG: Overly restrictive
+CREATE TABLE videos (
+    title VARCHAR(100),  -- YouTube titles can be longer
+    description VARCHAR(1000),  -- Descriptions can be very long
+    duration INTEGER  -- What about live streams?
+);
+
+-- ✅ CORRECT: Based on YouTube API specs
+CREATE TABLE videos (
+    title VARCHAR(200),  -- YouTube limit is ~100 chars, buffer for safety
+    description TEXT,  -- No practical limit, can be very long
+    duration INTEGER,  -- Seconds, NULL for live streams
+    view_count BIGINT,  -- Can be billions
+    like_count BIGINT,  -- Can be millions
+    channel_title VARCHAR(100),  -- Channel name limit
+    published_at TIMESTAMPTZ  -- Always timezone-aware
+);
+```
+
+## Constraint Validation Framework
+
+### Before Deploying Schema Changes:
+- [ ] Tested with maximum expected data sizes
+- [ ] Validated with actual API responses
+- [ ] Considered edge cases and error scenarios
+- [ ] Planned for data growth over time
+- [ ] Documented constraint reasoning
+
+### Constraint Documentation Template:
+```sql
+-- Field: summary
+-- Source: OpenAI GPT-4 API responses
+-- Research: Tested with 100+ actual summaries
+-- Max observed: 8,500 characters
+-- Constraint: 10,000 characters (20% buffer)
+-- Reasoning: AI summaries vary greatly by content length
+summary TEXT CHECK (length(summary) <= 10000)
+```
+
+## Migration Planning for Constraint Changes
+
+### When Constraints Are Too Restrictive:
+1. **Assess impact** on existing data
+2. **Plan migration strategy** for constraint relaxation
+3. **Test migration** with production-like data
+4. **Communicate downtime** if required
+
+### Migration Safety Checklist:
+- [ ] Backup existing data
+- [ ] Test migration on copy of production data
+- [ ] Plan rollback strategy
+- [ ] Validate application compatibility
+- [ ] Monitor for constraint violations post-migration
+
+## Error Handling for Constraint Violations
+
+### Application-Level Handling:
+```typescript
+// ❌ WRONG: Generic error handling
+try {
+  await saveToDatabase(data);
+} catch (error) {
+  throw new Error('Save failed');
+}
+
+// ✅ CORRECT: Specific constraint error handling
+try {
+  await saveToDatabase(data);
+} catch (error) {
+  if (error.code === '23514') {  // Check constraint violation
+    throw new Error(`Data too large: ${error.detail}`);
+  }
+  throw error;
+}
+```
+
+### User-Friendly Error Messages:
+```typescript
+// Transform constraint errors to user-friendly messages
+const getConstraintErrorMessage = (error: DatabaseError) => {
+  if (error.constraint?.includes('summary_check')) {
+    return 'The summary is too long. Please try with shorter content.';
+  }
+  return 'Data validation failed. Please check your input.';
+};
+```
+
+Remember: **Constraints should reflect reality, not assumptions. Always research before restricting.**
+description:
+globs:
+alwaysApply: false
+---

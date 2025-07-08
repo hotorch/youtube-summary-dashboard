@@ -1,0 +1,372 @@
+# Asynchronous UX Patterns & User Feedback Rules
+
+## CRITICAL: Async Operation UX Framework
+
+### MUST DO - For Long-Running Operations
+1. **Provide immediate acknowledgment** - confirm action was received
+2. **Show clear processing status** - user knows something is happening
+3. **Implement appropriate waiting patterns** - polling, websockets, or notifications
+4. **Handle timeout and error scenarios** - graceful degradation
+
+### FORBIDDEN - Async UX Anti-Patterns
+❌ **NEVER show fake/placeholder results as real data**
+❌ **NEVER leave users wondering if their action was received**
+❌ **NEVER assume users will manually refresh to see results**
+❌ **NEVER show "success" messages for operations that haven't completed**
+
+## User Feedback Stages Framework
+
+### Stage 1: Action Acknowledgment (Immediate)
+```typescript
+// ✅ CORRECT: Immediate feedback for action receipt
+const handleSubmit = async () => {
+  setIsSubmitting(true);
+  
+  try {
+    await triggerAsyncProcess(data);
+    toast.success('Processing request sent successfully');
+    setIsSubmitting(false);
+  } catch (error) {
+    toast.error('Failed to send request');
+    setIsSubmitting(false);
+  }
+};
+```
+
+### Stage 2: Processing Status (Ongoing)
+```typescript
+// ✅ CORRECT: Clear processing indicators
+const ProcessingStatus = () => {
+  return (
+    <div className="processing-indicator">
+      <Spinner />
+      <p>Processing your request...</p>
+      <p className="text-sm text-gray-600">
+        This usually takes 2-3 minutes
+      </p>
+    </div>
+  );
+};
+```
+
+### Stage 3: Completion Notification (Final)
+```typescript
+// ✅ CORRECT: Clear completion status
+const CompletionStatus = ({ result }) => {
+  return (
+    <div className="completion-indicator">
+      <CheckIcon />
+      <p>Processing completed successfully!</p>
+      <p>Your result is now available.</p>
+    </div>
+  );
+};
+```
+
+## Common Async UX Mistakes
+
+### Mistake 1: Fake Immediate Results
+```typescript
+// ❌ WRONG: Showing fake data immediately
+const addVideo = async (url: string) => {
+  const fakeVideo = {
+    id: 'temp-' + Date.now(),
+    title: 'Processing...',
+    summary: 'Summary will be available soon...'
+  };
+  
+  setVideos(prev => [...prev, fakeVideo]);  // This confuses users!
+  await callWebhook(url);
+};
+
+// ✅ CORRECT: Clear processing state
+const addVideo = async (url: string) => {
+  setIsProcessing(true);
+  setProcessingMessage('Sending request for processing...');
+  
+  try {
+    await callWebhook(url);
+    setProcessingMessage('Request sent! Processing in progress...');
+    // Real data will appear when processing completes
+  } catch (error) {
+    setProcessingMessage('Failed to send request');
+  }
+};
+```
+
+### Mistake 2: Ambiguous Success Messages
+```typescript
+// ❌ WRONG: Misleading success message
+const handleSubmit = async () => {
+  await callWebhook(data);
+  toast.success('Video added successfully!');  // It's not added yet!
+};
+
+// ✅ CORRECT: Accurate status message
+const handleSubmit = async () => {
+  await callWebhook(data);
+  toast.success('Processing request sent successfully!');
+  toast.info('Your video will appear when processing completes');
+};
+```
+
+## Async Operation Status Patterns
+
+### Pattern 1: Polling for Updates
+```typescript
+// ✅ CORRECT: Polling implementation
+const useAsyncOperationStatus = (operationId: string) => {
+  const [status, setStatus] = useState<'pending' | 'processing' | 'completed' | 'failed'>('pending');
+  
+  useEffect(() => {
+    if (!operationId) return;
+    
+    const pollStatus = async () => {
+      try {
+        const response = await checkOperationStatus(operationId);
+        setStatus(response.status);
+        
+        if (response.status === 'completed' || response.status === 'failed') {
+          return; // Stop polling
+        }
+        
+        setTimeout(pollStatus, 5000); // Poll every 5 seconds
+      } catch (error) {
+        setStatus('failed');
+      }
+    };
+    
+    pollStatus();
+  }, [operationId]);
+  
+  return status;
+};
+```
+
+### Pattern 2: Real-time Updates
+```typescript
+// ✅ CORRECT: WebSocket/SSE implementation
+const useRealtimeUpdates = () => {
+  const [updates, setUpdates] = useState([]);
+  
+  useEffect(() => {
+    const eventSource = new EventSource('/api/updates');
+    
+    eventSource.onmessage = (event) => {
+      const update = JSON.parse(event.data);
+      setUpdates(prev => [...prev, update]);
+    };
+    
+    return () => eventSource.close();
+  }, []);
+  
+  return updates;
+};
+```
+
+### Pattern 3: Periodic Refresh
+```typescript
+// ✅ CORRECT: Periodic data refresh
+const usePeriodicRefresh = (fetchFn: () => Promise<any>, interval: number = 30000) => {
+  const [data, setData] = useState(null);
+  const [lastRefresh, setLastRefresh] = useState(Date.now());
+  
+  useEffect(() => {
+    const refresh = async () => {
+      try {
+        const newData = await fetchFn();
+        setData(newData);
+        setLastRefresh(Date.now());
+      } catch (error) {
+        console.error('Refresh failed:', error);
+      }
+    };
+    
+    refresh(); // Initial load
+    const timer = setInterval(refresh, interval);
+    
+    return () => clearInterval(timer);
+  }, [fetchFn, interval]);
+  
+  return { data, lastRefresh };
+};
+```
+
+## User Communication Guidelines
+
+### Clear Status Messages:
+```typescript
+// ✅ CORRECT: Clear, specific messages
+const getStatusMessage = (stage: string) => {
+  switch (stage) {
+    case 'submitting':
+      return 'Sending your request...';
+    case 'submitted':
+      return 'Request sent! Processing in progress...';
+    case 'processing':
+      return 'Processing your content (this may take 2-3 minutes)...';
+    case 'completed':
+      return 'Processing completed! Your content is ready.';
+    case 'failed':
+      return 'Processing failed. Please try again.';
+    default:
+      return 'Unknown status';
+  }
+};
+```
+
+### Progress Indicators:
+```typescript
+// ✅ CORRECT: Appropriate progress indicators
+const ProgressIndicator = ({ stage }: { stage: string }) => {
+  const stages = ['submitted', 'processing', 'completed'];
+  const currentIndex = stages.indexOf(stage);
+  
+  return (
+    <div className="progress-indicator">
+      {stages.map((s, index) => (
+        <div 
+          key={s}
+          className={`step ${index <= currentIndex ? 'completed' : 'pending'}`}
+        >
+          {s}
+        </div>
+      ))}
+    </div>
+  );
+};
+```
+
+## Error Handling in Async Operations
+
+### Timeout Handling:
+```typescript
+// ✅ CORRECT: Timeout handling
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => 
+      setTimeout(() => reject(new Error('Operation timed out')), timeoutMs)
+    )
+  ]);
+};
+
+const handleAsyncOperation = async () => {
+  try {
+    await withTimeout(longRunningOperation(), 30000);
+    setStatus('completed');
+  } catch (error) {
+    if (error.message === 'Operation timed out') {
+      setStatus('timeout');
+      showTimeoutMessage();
+    } else {
+      setStatus('failed');
+      showErrorMessage(error);
+    }
+  }
+};
+```
+
+### Retry Logic:
+```typescript
+// ✅ CORRECT: Retry with exponential backoff
+const retryWithBackoff = async (
+  operation: () => Promise<any>,
+  maxRetries: number = 3,
+  baseDelay: number = 1000
+) => {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (attempt === maxRetries - 1) throw error;
+      
+      const delay = baseDelay * Math.pow(2, attempt);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+};
+```
+
+## Loading States and Skeletons
+
+### Content Loading States:
+```typescript
+// ✅ CORRECT: Skeleton loading for async content
+const VideoList = () => {
+  const { data: videos, isLoading, error } = useVideos();
+  
+  if (isLoading) {
+    return (
+      <div className="video-list">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <VideoSkeleton key={i} />
+        ))}
+      </div>
+    );
+  }
+  
+  if (error) {
+    return <ErrorMessage error={error} />;
+  }
+  
+  return (
+    <div className="video-list">
+      {videos.map(video => (
+        <VideoCard key={video.id} video={video} />
+      ))}
+    </div>
+  );
+};
+```
+
+### Button Loading States:
+```typescript
+// ✅ CORRECT: Button loading states
+const SubmitButton = ({ isSubmitting, onSubmit }) => {
+  return (
+    <button 
+      onClick={onSubmit}
+      disabled={isSubmitting}
+      className="submit-button"
+    >
+      {isSubmitting ? (
+        <>
+          <Spinner className="w-4 h-4 mr-2" />
+          Sending...
+        </>
+      ) : (
+        'Submit'
+      )}
+    </button>
+  );
+};
+```
+
+## Async Operation Best Practices
+
+### Operation Lifecycle Management:
+1. **Initiation**: Clear action acknowledgment
+2. **Processing**: Ongoing status updates
+3. **Completion**: Clear success/failure notification
+4. **Cleanup**: Remove temporary states
+
+### User Experience Checklist:
+- [ ] Users know their action was received
+- [ ] Users understand what's happening during processing
+- [ ] Users know approximately how long to wait
+- [ ] Users are notified when processing completes
+- [ ] Users can recover from errors gracefully
+- [ ] Users don't see confusing intermediate states
+
+### Performance Considerations:
+- [ ] Polling intervals are reasonable (not too frequent)
+- [ ] Long-running operations have timeout handling
+- [ ] Failed operations have retry logic
+- [ ] UI remains responsive during async operations
+
+Remember: **Async operations should feel predictable and transparent to users. Never leave them guessing about what's happening.**
+description:
+globs:
+alwaysApply: false
+---

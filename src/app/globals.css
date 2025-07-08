@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Montserrat:wght@600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -63,7 +65,57 @@
   * {
     @apply border-border;
   }
+  
+  html {
+    scroll-behavior: smooth;
+    font-family: 'Inter', sans-serif;
+  }
+  
   body {
-    @apply bg-background text-foreground;
+    @apply bg-primary-900 text-neutral-0;
+    font-family: 'Inter', sans-serif;
+    line-height: 1.5;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  
+  h1 { font-weight: 700; }
+  h2 { font-weight: 600; }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-primary-700/60 backdrop-blur-md border border-white/10 rounded-2xl shadow-inner;
+  }
+  
+  .glass-navbar {
+    @apply bg-primary-700/80 backdrop-blur-lg border-b border-white/10;
+  }
+  
+  .cta-button {
+    @apply px-6 py-3 rounded-xl font-semibold text-neutral-0 bg-gradient-to-r from-accent-from to-accent-to shadow-md hover:translate-y-0.5 hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-to/40 disabled:bg-primary-700 disabled:text-neutral-700 transition-all duration-150;
+  }
+  
+  .search-input {
+    @apply w-52 focus:w-80 bg-primary-700/60 backdrop-blur-md border border-white/20 rounded-xl px-4 py-2 text-neutral-0 placeholder:text-neutral-100 focus:shadow-lg focus:shadow-accent-to/20 transition-all duration-150;
+  }
+}
+
+@layer utilities {
+  /* Motion 조절 */
+  @media (prefers-reduced-motion: reduce) {
+    .transition-all,
+    .transition {
+      @apply transition-none;
+    }
+    
+    .animate-accordion-down,
+    .animate-accordion-up {
+      @apply animate-none;
+    }
   }
 }

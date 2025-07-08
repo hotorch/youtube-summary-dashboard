@@ -1,0 +1,144 @@
+# Requirements Analysis & PRD Interpretation Rules
+
+## CRITICAL: Requirements Understanding Framework
+
+### MUST DO - Before Any Implementation
+1. **Read the ENTIRE PRD/specification** - not just the summary
+2. **Identify the PRIMARY user journey** - what is the main flow?
+3. **Distinguish between sequential steps and parallel processes**
+4. **Understand the business context** - why does this feature exist?
+
+### FORBIDDEN - Requirements Misinterpretation
+❌ **NEVER assume you understand requirements from titles alone**
+❌ **NEVER implement based on "similar" projects without reading specs**
+❌ **NEVER skip reading documentation files in the project**
+❌ **NEVER assume traditional patterns apply without verification**
+
+## PRD Analysis Checklist
+
+### When Reading Project Requirements:
+- [ ] **User Journey**: What is the complete user flow from start to finish?
+- [ ] **Data Flow**: Where does data come from and where does it go?
+- [ ] **Processing Owner**: Who/what performs the core business logic?
+- [ ] **Timing Expectations**: Are operations synchronous or asynchronous?
+- [ ] **Integration Points**: What external services are involved and their roles?
+
+### Red Flags in Requirements:
+🚩 Vague language about "integration" without specifying roles
+🚩 Missing information about data processing ownership
+🚩 Unclear timing expectations (immediate vs. eventual)
+🚩 Ambiguous external service responsibilities
+
+## Common PRD Misinterpretation Patterns
+
+### Pattern 1: Sequential vs. Pipeline Confusion
+```
+❌ WRONG INTERPRETATION:
+"Step 1: Add video → Step 2: Call webhook → Step 3: Show result"
+(Assumes linear, synchronous flow)
+
+✅ CORRECT INTERPRETATION:
+"User adds video → Webhook triggers external processing → External service completes → Result appears"
+(Recognizes asynchronous pipeline)
+```
+
+### Pattern 2: Service Role Misunderstanding
+```
+❌ WRONG INTERPRETATION:
+"Integration with Make.com" = "Send notification to Make.com"
+
+✅ CORRECT INTERPRETATION:
+"Integration with Make.com" = "Make.com performs core processing"
+```
+
+## Requirements Validation Questions
+
+### Before Starting Implementation:
+1. **Who is the user?** What are they trying to accomplish?
+2. **What is the happy path?** Walk through the ideal user journey
+3. **What are the system boundaries?** What do we own vs. external services?
+4. **What are the performance expectations?** Immediate vs. eventual consistency?
+5. **What are the failure scenarios?** How should errors be handled?
+
+### During Requirements Review:
+- [ ] Can I explain the user journey in simple terms?
+- [ ] Do I understand why each component exists?
+- [ ] Are the integration points clearly defined?
+- [ ] Do I know what success looks like for the user?
+- [ ] Have I identified all external dependencies?
+
+## Documentation Analysis Framework
+
+### When Encountering Project Documentation:
+1. **Read in order**: PRD → IA → Use Cases → ERD → Design
+2. **Cross-reference**: Do the documents align with each other?
+3. **Identify gaps**: What information is missing or unclear?
+4. **Question assumptions**: Challenge your initial interpretations
+
+### Documentation Red Flags:
+🚩 Inconsistencies between different documents
+🚩 Missing user journey descriptions
+🚩 Vague integration specifications
+🚩 Unclear data ownership definitions
+
+## Implementation Planning Rules
+
+### MUST DO - Before Writing Code:
+1. **Create a system diagram** showing all components and data flow
+2. **Write user stories** for each major interaction
+3. **Define API contracts** for all integration points
+4. **Plan error handling** for each external dependency
+
+### FORBIDDEN - Implementation Anti-Patterns:
+❌ **NEVER start coding without understanding the complete flow**
+❌ **NEVER assume standard patterns without requirements validation**
+❌ **NEVER implement features that contradict the user journey**
+❌ **NEVER skip planning for external service failures**
+
+## Requirements Clarification Framework
+
+### When Requirements Are Unclear:
+1. **Identify specific ambiguities** - don't ask vague questions
+2. **Propose concrete alternatives** - "Do you mean A or B?"
+3. **Provide context** - explain why the clarification matters
+4. **Suggest implications** - "If A, then X; if B, then Y"
+
+### Example Clarification Questions:
+- "When you say 'integration with Make.com', do you mean we send data TO Make.com for processing, or Make.com sends processed data TO us?"
+- "Should users see results immediately, or is it okay for results to appear after processing completes?"
+- "Who is responsible for the core business logic - our application or the external service?"
+
+## Stakeholder Communication Rules
+
+### MUST DO - When Discussing Requirements:
+1. **Repeat back your understanding** in your own words
+2. **Ask about edge cases** and error scenarios
+3. **Confirm timing expectations** explicitly
+4. **Validate assumptions** before implementing
+
+### FORBIDDEN - Communication Mistakes:
+❌ **NEVER assume silence means agreement**
+❌ **NEVER implement based on incomplete understanding**
+❌ **NEVER skip confirming critical architectural decisions**
+❌ **NEVER proceed when requirements conflict with each other**
+
+## Requirements Change Management
+
+### When Requirements Change:
+1. **Document the change** and its impact
+2. **Assess affected components** - what needs to be updated?
+3. **Communicate implications** to stakeholders
+4. **Update all related documentation**
+
+### Change Impact Assessment:
+- [ ] Does this change affect the user journey?
+- [ ] Do external integrations need updates?
+- [ ] Are database schema changes required?
+- [ ] Does the UI/UX need modifications?
+- [ ] Are there performance implications?
+
+Remember: **Understanding requirements correctly the first time saves exponentially more time than fixing architectural mistakes later.**
+description:
+globs:
+alwaysApply: false
+---
