@@ -8,12 +8,12 @@ import { useVideos } from '@/hooks/use-videos'
 import { GlassCard } from '@/components/ui/glass-card'
 import { Button } from '@/components/ui/button'
 import { Calendar, Grid, Loader2, Radio } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { VideoSummaryWithTags } from '@/lib/database.types'
 import { useQueryClient } from '@tanstack/react-query'
 
-export default function DashboardPage() {
+function DashboardContent() {
   const searchParams = useSearchParams()
   const view = searchParams?.get('view') || 'calendar'
   const searchQuery = searchParams?.get('query') || ''
@@ -181,5 +181,22 @@ export default function DashboardPage() {
         />
       </div>
     </AppLayout>
+  )
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-accent-to mx-auto mb-4" />
+            <p className="text-neutral-100">페이지를 불러오는 중...</p>
+          </div>
+        </div>
+      </AppLayout>
+    }>
+      <DashboardContent />
+    </Suspense>
   )
 } 
