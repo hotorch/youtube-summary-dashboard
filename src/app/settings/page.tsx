@@ -19,8 +19,8 @@ import { useToast } from '@/hooks/use-toast'
 export default function SettingsPage() {
   const [webhookUrls, setWebhookUrls] = useState<Record<WebhookType, string>>({
     default: '',
-    video_summary: 'https://hook.eu2.make.com/1vmq85bvseml9jehaf48caw25pojxeo3',
-    channel_meta: 'https://hook.eu2.make.com/rl20ksysotuxl2x8yijcsch0bh7i6los'
+    video_summary: process.env.NEXT_PUBLIC_VIDEO_SUMMARY_WEBHOOK_URL || '',
+    channel_meta: process.env.NEXT_PUBLIC_CHANNEL_META_WEBHOOK_URL || ''
   })
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -31,15 +31,20 @@ export default function SettingsPage() {
     loadWebhookUrls()
   }, [])
 
-  // 요청된 웹훅 URL들을 자동 설정
+  // 환경변수에서 웹훅 URL을 자동으로 설정
   useEffect(() => {
     const initializeWebhooks = async () => {
       try {
-        // 비디오 요약 웹훅 URL 저장
-        await setWebhookUrl('video_summary', 'https://hook.eu2.make.com/1vmq85bvseml9jehaf48caw25pojxeo3')
+        const videoSummaryUrl = process.env.NEXT_PUBLIC_VIDEO_SUMMARY_WEBHOOK_URL
+        const channelMetaUrl = process.env.NEXT_PUBLIC_CHANNEL_META_WEBHOOK_URL
         
-        // 채널 메타정보 웹훅 URL 저장
-        await setWebhookUrl('channel_meta', 'https://hook.eu2.make.com/rl20ksysotuxl2x8yijcsch0bh7i6los')
+        if (videoSummaryUrl) {
+          await setWebhookUrl('video_summary', videoSummaryUrl)
+        }
+        
+        if (channelMetaUrl) {
+          await setWebhookUrl('channel_meta', channelMetaUrl)
+        }
         
         console.log('웹훅 URL 초기화 완료')
       } catch (error) {
@@ -56,11 +61,11 @@ export default function SettingsPage() {
     try {
       const urls = await getAllWebhookUrls()
       
-      // 기본값이 있으면 유지, 없으면 요청된 URL로 설정
+      // 환경변수 우선, 없으면 저장된 값 사용
       setWebhookUrls(prev => ({
-        default: urls.default || prev.default,
-        video_summary: urls.video_summary || prev.video_summary,
-        channel_meta: urls.channel_meta || prev.channel_meta
+        default: '',
+        video_summary: process.env.NEXT_PUBLIC_VIDEO_SUMMARY_WEBHOOK_URL || urls.video_summary || '',
+        channel_meta: process.env.NEXT_PUBLIC_CHANNEL_META_WEBHOOK_URL || urls.channel_meta || ''
       }))
     } catch (error) {
       console.error('웹훅 URL 로드 실패:', error)
@@ -132,8 +137,6 @@ export default function SettingsPage() {
         return '비디오 요약'
       case 'channel_meta':
         return '채널 메타정보'
-      case 'default':
-        return '기본'
       default:
         return type
     }
@@ -157,6 +160,14 @@ export default function SettingsPage() {
     }))
   }
 
+  const getWebhookSource = (type: WebhookType) => {
+    const envUrl = type === 'video_summary' 
+      ? process.env.NEXT_PUBLIC_VIDEO_SUMMARY_WEBHOOK_URL
+      : process.env.NEXT_PUBLIC_CHANNEL_META_WEBHOOK_URL
+    
+    return envUrl ? '환경변수' : '수동 설정'
+  }
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -178,11 +189,16 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* 비디오 요약 웹훅 */}
                 <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Sparkles className="h-5 w-5 text-accent-to" />
-                    <Label htmlFor="video-summary-webhook" className="text-neutral-0 font-medium">
-                      비디오 요약 웹훅 URL
-                    </Label>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Sparkles className="h-5 w-5 text-accent-to" />
+                      <Label htmlFor="video-summary-webhook" className="text-neutral-0 font-medium">
+                        비디오 요약 웹훅 URL
+                      </Label>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {getWebhookSource('video_summary')}
+                    </Badge>
                   </div>
                   <Input
                     id="video-summary-webhook"
@@ -191,28 +207,40 @@ export default function SettingsPage() {
                     value={webhookUrls.video_summary}
                     onChange={(e) => updateWebhookUrl('video_summary', e.target.value)}
                     className="bg-primary-700/60 border-white/20 text-neutral-0 placeholder:text-neutral-100"
-                    disabled={isLoading || isSaving}
+                    disabled={isLoading || isSaving || !!process.env.NEXT_PUBLIC_VIDEO_SUMMARY_WEBHOOK_URL}
                   />
                   <p className="text-xs text-neutral-100">
                     비디오 요약 버튼 클릭 시 사용되는 웹훅 URL
+                    {process.env.NEXT_PUBLIC_VIDEO_SUMMARY_WEBHOOK_URL && (
+                      <span className="block text-yellow-400 mt-1">
+                        환경변수로 설정되어 수정할 수 없습니다.
+                      </span>
+                    )}
                   </p>
-                  <Button 
-                    onClick={() => handleSaveWebhook('video_summary')}
-                    disabled={isSaving || isLoading}
-                    className="cta-button w-full"
-                    size="sm"
-                  >
-                    {isSaving ? '저장 중...' : '저장'}
-                  </Button>
+                  {!process.env.NEXT_PUBLIC_VIDEO_SUMMARY_WEBHOOK_URL && (
+                    <Button 
+                      onClick={() => handleSaveWebhook('video_summary')}
+                      disabled={isSaving || isLoading}
+                      className="cta-button w-full"
+                      size="sm"
+                    >
+                      {isSaving ? '저장 중...' : '저장'}
+                    </Button>
+                  )}
                 </div>
 
                 {/* 채널 메타정보 웹훅 */}
                 <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Radio className="h-5 w-5 text-accent-to" />
-                    <Label htmlFor="channel-meta-webhook" className="text-neutral-0 font-medium">
-                      채널 메타정보 웹훅 URL
-                    </Label>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Radio className="h-5 w-5 text-accent-to" />
+                      <Label htmlFor="channel-meta-webhook" className="text-neutral-0 font-medium">
+                        채널 메타정보 웹훅 URL
+                      </Label>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {getWebhookSource('channel_meta')}
+                    </Badge>
                   </div>
                   <Input
                     id="channel-meta-webhook"
@@ -221,57 +249,36 @@ export default function SettingsPage() {
                     value={webhookUrls.channel_meta}
                     onChange={(e) => updateWebhookUrl('channel_meta', e.target.value)}
                     className="bg-primary-700/60 border-white/20 text-neutral-0 placeholder:text-neutral-100"
-                    disabled={isLoading || isSaving}
+                    disabled={isLoading || isSaving || !!process.env.NEXT_PUBLIC_CHANNEL_META_WEBHOOK_URL}
                   />
                   <p className="text-xs text-neutral-100">
                     채널 메타정보 추가 버튼 클릭 시 사용되는 웹훅 URL
+                    {process.env.NEXT_PUBLIC_CHANNEL_META_WEBHOOK_URL && (
+                      <span className="block text-yellow-400 mt-1">
+                        환경변수로 설정되어 수정할 수 없습니다.
+                      </span>
+                    )}
                   </p>
-                  <Button 
-                    onClick={() => handleSaveWebhook('channel_meta')}
-                    disabled={isSaving || isLoading}
-                    className="cta-button w-full"
-                    size="sm"
-                  >
-                    {isSaving ? '저장 중...' : '저장'}
-                  </Button>
-                </div>
-
-                {/* 기본 웹훅 (호환성) */}
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Webhook className="h-5 w-5 text-accent-to" />
-                    <Label htmlFor="default-webhook" className="text-neutral-0 font-medium">
-                      기본 웹훅 URL
-                    </Label>
-                  </div>
-                  <Input
-                    id="default-webhook"
-                    type="url"
-                    placeholder="https://hook.make.com/..."
-                    value={webhookUrls.default}
-                    onChange={(e) => updateWebhookUrl('default', e.target.value)}
-                    className="bg-primary-700/60 border-white/20 text-neutral-0 placeholder:text-neutral-100"
-                    disabled={isLoading || isSaving}
-                  />
-                  <p className="text-xs text-neutral-100">
-                    특정 웹훅 URL이 없을 때 사용되는 기본 웹훅 URL
-                  </p>
-                  <Button 
-                    onClick={() => handleSaveWebhook('default')}
-                    disabled={isSaving || isLoading}
-                    className="cta-button w-full"
-                    size="sm"
-                  >
-                    {isSaving ? '저장 중...' : '저장'}
-                  </Button>
+                  {!process.env.NEXT_PUBLIC_CHANNEL_META_WEBHOOK_URL && (
+                    <Button 
+                      onClick={() => handleSaveWebhook('channel_meta')}
+                      disabled={isSaving || isLoading}
+                      className="cta-button w-full"
+                      size="sm"
+                    >
+                      {isSaving ? '저장 중...' : '저장'}
+                    </Button>
+                  )}
                 </div>
               </div>
 
               {/* 현재 설정된 웹훅 상태 */}
               <div className="border-t border-white/10 pt-6">
                 <h3 className="font-medium text-neutral-0 mb-3">현재 웹훅 설정 상태</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {Object.entries(webhookUrls).map(([type, url]) => (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {Object.entries(webhookUrls)
+                    .filter(([type]) => type !== 'default')
+                    .map(([type, url]) => (
                     <div key={type} className="flex items-center justify-between p-3 bg-primary-500/20 rounded-lg">
                       <div className="flex items-center space-x-2">
                         {getWebhookTypeIcon(type as WebhookType)}
@@ -279,9 +286,14 @@ export default function SettingsPage() {
                           {getWebhookTypeLabel(type as WebhookType)}
                         </span>
                       </div>
-                      <Badge className={url ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-red-500/20 text-red-400 border-red-500/30"}>
-                        {url ? '설정됨' : '미설정'}
-                      </Badge>
+                      <div className="flex items-center space-x-2">
+                        <Badge className={url ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-red-500/20 text-red-400 border-red-500/30"}>
+                          {url ? '설정됨' : '미설정'}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {getWebhookSource(type as WebhookType)}
+                        </Badge>
+                      </div>
                     </div>
                   ))}
                 </div>
